@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title> Memory </title>
+	<meta charset="UTF-8">
+	<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+	<script>
+		//variables needed before the game
+		var earlierX = 4
+		var earlierY = 4
+		var ListenerCondition = true
+		//game variables
+		var TabOfClicked = []											// 2' elements board of clicked elements
+		var ClickedElements = 0											// Variable for moving around the board of clicked elements
+		var CountToWin = 0												// Variable for counting down to win
+		var turns = 0
+		var nick = "Not specifed"													// Variable for counting turns
+		var TemporaryTime
+		var TimeSelectedContent1="";
+		var TimeSelectedContent2="";
+		var TimeSelectedContent3="";
+		//arrays for cookies
+		var sec30 = []
+		var sec60 = []
+		var sec90 = []
+
+		/*
+		action: cleaning parent div for new game
+		*/
+		function CleaningPlayground() {
+			//cleaning parent div
+			var i = document.getElementById("kontener");
+			i.innerHTML = '';
+		}
+		/*
+		action: making a Initial image and div for cards
+		*/
+		function GamePreparation(){
+			//making child div
+			var div = document.createElement("div")
+			div.id = "karty"
+			kontener.appendChild(div)
+			//making an Initial image
+			var img = document.createElement("img")
+			img.src = "img/czolowa.png"
+			img.alt = "alt"
+			img.id = "InitImage"
+			img.useMap = "#map"
+			kontener.appendChild(img)
+		}
+		/*
+		input: earlier width and height
+		action: Rescaling Imagemap to init image size
+		*/
+		function RescaleImagemap(earlierX, earlierY){
+			//calculation of coefficients increasing the coordinates
+			var wspX= width / earlierX 
+			var wspY= height / earlierY
+			//reading areas to array
+			coords = []
+			areas = map.getElementsByTagName('area')
+			if(ListenerCondition){
+				for (var i = 0; i < areas.length; i++)
+				areas[i].addEventListener("click", PreparingGamefield(i));
+			}
+			ListenerCondition = false
+			//reading coordinates from areas to coords array
+			for (n = 0; n < 3; n++) {
+                coords[n] = areas[n].coords.split(',');
+            }
+			//multiplication coordinates with coefficients
+			for (n = 0; n < 3; n++) {
+                NumberOfAreas = coords[n].length;
+                for (m = 0; m < NumberOfAreas; m++){
+					if(m%2	== 0)
+                    	coords[n][m] *= wspX;
+					else
+						coords[n][m] *=wspY;
+				}
+				areas[n].coords = coords[n].join(',');
+			}
+		}
+		/*
+		input: number of the clicked element
+		action: remove initial image, choosing time of the game
+		*/
+		function PreparingGamefield(i){
+			return function(){
+				//making an array with times to choose
+				times = [30,60,90]
+				//removing initial image
+				document.getElementById("InitImage").style.display = "none";
+				//making a headline
+				var h1 = document.createElement('h1')
+				h1.id = "h1"
+    			h1.innerText=("MEMORY ("+times[i]+"[s])")
+				main.insertBefore(h1, kontener)
+				//making a time indicator
+				var upper = document.createElement('div')
+				upper.id= "upper"
+				main.insertBefore(upper, kontener)
+				var secondary = document.createElement('div')
+				secondary.id= "secondary"
+				upper.appendChild(secondary)
+				//making numerical timer
+				var NumericalTimer = document.createElement('div')
+				NumericalTimer.id = "NumericalTimer"
+				NumericalTimer.innerHTML= times[i]+".00"
+				destinationExecutionTime = times[i]*1000
+				upper.appendChild(NumericalTimer)
+				if(times[i]>=60){
+					if(times[i]-60==0)
+						document.getElementById("NumericalTimer").innerHTML = "01:00.000"
+					else
+						document.getElementById("NumericalTimer").innerHTML = "01:" + (times[i]-60) +".000"
+				}else
+					document.getElementById("NumericalTimer").innerHTML = "00:" + NumericalTimer.innerHTML
+				//removing attribute from starting game button
+				document.getElementById("bt1").removeAttribute("onclick");
+				//checking input value - specify nick of gamer
+				nick = document.getElementById("nick").value;
+				//making input read-only
+				document.getElementById("nick").setAttribute("readonly", "readonly");
+				//making a Leaderboard for current time
+				ReadLeaderboard(times[i])
+			}
+		}
+		/*
+		input: number of elements in game, width of parent div
+		action: specify width of parent div and add elements to the page
+		*/
+		function PlacingItems(elements, width) {
+			//setting width of parent div
+			document.getElementById("kontener").style.width = width * 100 + "px"
+			document.getElementById("kontener").style.height = height * 100 + "px"
+			//placing items loop
+			for (var i = 0; i < elements; i++) {
+				var zdj = document.createElement("img")
+				zdj.src = "img/0.jpg"
+				zdj.alt = "alt"
+				karty.appendChild(zdj);
+			}
+		}
+		/*
+		input: Array of elements on website
+		action: remove unnecessary elements from sources
+		*/
+		function PreparingBoard(elementsBoard) {
+			//removing unnecessary elements from sources
+			for (var i = 0; i < elementsBoard.length; i++)
+				srcBoard.push(elementsBoard[i].src.split("/").slice(-1)[0]);
+		}
+		/*
+		input: Array of elements on website, array with sources of elements
+		action: Set up he sources one by one in array
+		*/
+		function SetupSources(srcBoard, elementsBoard) {
+			var id = 1;
+			//Setting up sources one by one 
+			for (var i = 0; i < srcBoard.length; i = i + 2) {
+				srcBoard[i] = id + ".jpg"
+				elementsBoard[i].src = "img/" + srcBoard[i]
+				srcBoard[i + 1] = id + ".jpg"
+				elementsBoard[i + 1].src = "img/" + srcBoard[i + 1]
+				id++;
+			}
+		}
+		/*
+		input: minimum and maximum value of tab
+		output: rounded value of random number
+		*/
+		function randomize(min, max) {
+			return Math.floor(Math.random() * (max - min + 1)) + min
+		}
+		/*
+		input: Array with sources
+		action: this function is for reverse sorting
+		*/
+		function DrawSources(srcBoard) {
+			var length = srcBoard.length
+			var randomSrc
+			var randomElements = []
+
+			for (var i = 0; i < length; i++) {
+				randomSrc = randomize(0, srcBoard.length - 1)
+				randomElements[i] = srcBoard[randomSrc]
+				srcBoard.splice(randomSrc, 1)
+			}
+			return randomElements
+		}
+		/*
+		input: Boards with elements on websites
+		action: Flipp elements to the other side and add listener to all objects 
+		*/
+		function FlippingElements(elementsBoard) {
+			for (var i = 0; i < elementsBoard.length; i++) {
+				elementsBoard[i].src = "img/" + 0 + ".jpg"
+				elementsBoard[i].addEventListener("click", GameFunction(i));
+				elementsBoard[i].addEventListener("click", timer )
+			}
+		}
+		/*
+		input: remaining time until the end of the game (can be 0 when user did not finish the game), nick is name of player
+		action: at the end of a game, this function display prompt with information
+		*/
+		function WindowPrompt(TemporaryTime,nick){
+			//clear window
+			clearInterval(timerowa);
+			if(document.getElementById("flex")!=null){
+				document.getElementById("tlo").remove()
+				document.getElementById("flex").remove()
+			}
+
+			//creating new elements
+			var div1 = document.createElement("div")
+			div1.id = "tlo"
+			var body = document.getElementsByTagName("body")[0];
+			body.appendChild(div1)
+
+			var div2 = document.createElement("div")
+			div2.id = "prompt"
+			div2.onclick = function WindowPromptWork(){
+				document.getElementById("tlo").remove()
+				document.getElementById("prompt").remove()
+				if(TemporaryTime!=0)
+					SaveLeaderboard(nick,TemporaryTime)
+				reload();
+				game();
+			}
+			body.appendChild(div2)
+
+			if(TemporaryTime==0)
+				document.getElementById('prompt').innerHTML = "<p>Nie udało ci się ukończyc gry! :( <br> Kliknij białe tło by przejść do okna wyboru rozmiaru planszy i czasu</p>";
+			else
+				document.getElementById('prompt').innerHTML = "<p>Udało ci się ukończyć grę! :) <br> Kliknij białe tło by przejść do okna wyboru rozmiaru planszy i czasu</p>";
+		}
+		/*
+		action: Function is performed when cookies are  empty (first game on computer), and fill array with default names and times
+		*/
+		function initCookie(){
+			//if cookies are empty fill them with 0.00 times
+			sec30= ["0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed"]
+			sec60= ["0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed"]
+			sec90= ["0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed","0/Not specifed"]
+			document.cookie = "sec30=" + sec30;
+            document.cookie = "sec60=" + sec60;
+            document.cookie = "sec90=" + sec90;
+		}
+		/*
+		input: nick  - name of player , width, height - size of gamefield, TemporaryTime - remaining time until the end of the game
+		action: Function is performed when game is over
+		*/
+		function SaveLeaderboard(nick,TemporaryTime){
+			//if input is empty change value to not specifed name
+			if(document.getElementById("nick").value == "")
+				nick = "Not specifed"
+			//making expiration date for cookies
+			var d=new Date();
+			d.setTime(d.getTime()+1000*60*60*24*365*5)			//ustawienia cookie na 5 lat
+			//saving results to cookie
+			if(destinationExecutionTime==30000){									//for 30 sec games
+				sec30 = document.cookie.split(";")[0].split("=")[1].split(",")		//making tab of sec 30 elements
+				sec30.push(TemporaryTime+"/"+nick);
+				sec30.sort()
+				sec30.reverse()
+				sec30.pop()
+			}else if(destinationExecutionTime==60000){								//for 60 sec games
+				sec60 = document.cookie.split(";")[1].split("=")[1].split(",")		//making tab of sec 60 elements
+				sec60.push(TemporaryTime+"/"+nick);
+				sec60.sort()
+				sec60.reverse()
+				sec60.pop()
+			}else{																	//for 90 sec games
+				sec90 = document.cookie.split(";")[2].split("=")[1].split(",")		//making tab of sec 30 elements
+				sec90.push(TemporaryTime+"/"+nick);
+				sec90.sort()
+				sec90.reverse()
+				sec90.pop()
+			}
+			//setting cookies with fill arrays
+			document.cookie = "sec30=" + sec30 + ";expires="+d.toUTCString();
+			document.cookie = "sec60=" + sec60 + ";expires="+d.toUTCString();
+			document.cookie = "sec90=" + sec90 + ";expires="+d.toUTCString();	
+		}
+		/*
+		input: selected time of the game
+		action: Init Cookies if cookies are empty
+		*/
+		function ReadLeaderboard(time){
+			//if cookies are empty fill them with basic times and names
+			if(document.cookie=="")
+				initCookie();
+			//variable for split cookie files
+			var i = document.cookie
+			//making Leaderboard
+			var Leaderboard = document.createElement('div')
+			Leaderboard.id = "leaderboard"
+			Leaderboard.innerHTML = "<h1> TOP 10 : " + time+"sec </h1> \n"
+			for(var x=0; x<10; x++){
+				Leaderboard.innerHTML+=(i.split(";")[(time/30)-1].split("=")[1].split(",")[x].split("/")[1] + 
+				" - " + TimeRules(i.split(";")[(time/30)-1].split("=")[1].split(",")[x].split("/")[0]) + "<br>")
+			}
+			main.append(Leaderboard)
+
+		}
+		/*
+		action: If user click on "Show leaderboards" button this function will show 3 leaderboards
+		*/
+		function ShowAllLeaderboards(){
+			var div1 = document.createElement("div")
+			div1.id = "tlo"
+			var body = document.getElementsByTagName("body")[0];
+			body.appendChild(div1)
+
+			var flexdiv = document.createElement("div")
+			flexdiv.id = "flex"
+			flexdiv.onclick = function WindowPromptWork(){
+				document.getElementById("tlo").remove()
+				document.getElementById("flex").remove()
+			}
+			body.appendChild(flexdiv)
+			var i = document.cookie
+			for(var y=0; y<3; y++){
+				var div = document.createElement("div")
+				div.className="prompts"
+				div.innerHTML = "<h1> TOP 10 : "+(y+1)*30+"sec </h1> \n"
+				for(var x=0; x<10; x++){
+					div.innerHTML+=(i.split(";")[y].split("=")[1].split(",")[x].split("/")[1] + 
+					" - " + TimeRules(i.split(";")[y].split("=")[1].split(",")[x].split("/")[0]) + "<br>")
+				}
+				flexdiv.appendChild(div)
+			}
+
+		}
+		/*
+		input: time in miliseconds
+		output: full time in mm:ss:xxx format (m - minutes, s - seconds, x - miliseconds)
+		action:change displayed time
+		*/
+		function TimeRules(Showntime){
+			if(Showntime < 60000){
+				if((Showntime)<10000)
+					Showntime = "00:0" + (Showntime/1000).toFixed(3)
+				else
+					Showntime = "00:" + (Showntime/1000).toFixed(3)
+			}else{
+				if((Showntime)<70000)
+					Showntime = "01:0" + ((Showntime/1000)-60).toFixed(3)
+				else
+					Showntime = "01:" + ((Showntime/1000)-60).toFixed(3)
+			}
+
+			return Showntime;
+		}
+		/*
+		input: index of clicked element
+		action: comparing objects
+		*/
+		function GameFunction(i) {
+			return function () {
+				turns++
+				if (elementsBoard[i].src.slice(-5) == "0.jpg") {				//checking whether the user has clicked a good element 
+					if (TabOfClicked.length <= 1 && TabOfClicked[0] != i) {     //saving elements in Array and checking whether the user hasn't clicked one element twice   
+						TabOfClicked[ClickedElements] = i
+						ClickedElements++
+						elementsBoard[i].src = "img/" + srcBoard[i]
+					}
+					if (TabOfClicked.length >= 2) {			//If array is ready to be checked
+						if (elementsBoard[TabOfClicked[0]].src === elementsBoard[TabOfClicked[1]].src) {		//if elements are the same, program leave them
+							TabOfClicked = []
+							ClickedElements = 0
+							if (CountToWin == (elements / 2) - 1) {				//condition to win
+								elementsBoard[i].src = "img/" + srcBoard[i]
+								setTimeout(function () {
+									WindowPrompt(TemporaryTime,nick)
+								}, 600);
+							}
+							CountToWin++
+						} else {				//if clicked elements are different
+							setTimeout(function () {
+								if (TabOfClicked.length == 2) {
+									elementsBoard[TabOfClicked[0]].src = "img/0.jpg"
+									elementsBoard[TabOfClicked[1]].src = "img/0.jpg"
+									TabOfClicked = []
+									ClickedElements = 0
+								}
+							}, 800);
+						}
+					}
+				}
+			}
+		}
+		/*
+		action: Changing values of timer
+		input: chosen number of seconds
+		*/
+		function timer() {
+			// remove timer listener from other objects
+			for (var i = 0; i < elementsBoard.length; i++) {
+				elementsBoard[i].removeEventListener("click", timer );
+			}
+			//Getting time
+			var ActualDate = new Date();
+    		var ActualTime = ActualDate.getTime();
+			var DestinationTime = ActualTime + destinationExecutionTime
+			TemporaryTime = DestinationTime - ActualTime
+			//Interval function of timer
+			timerowa = setInterval(function(){
+				//If remaining time is bigger than 10
+				if(TemporaryTime>10){
+					ActualDate = new Date();
+					ActualTime = ActualDate.getTime();
+					TemporaryTime = DestinationTime - ActualTime
+					//changing viewed time in timer
+					document.getElementById("NumericalTimer").innerHTML = TimeRules(TemporaryTime)
+					//changing width of secondary div
+					document.getElementById("secondary").style.width = TemporaryTime/(destinationExecutionTime/100)+"%"
+					if(TemporaryTime/(destinationExecutionTime/100) < 40)
+						document.getElementById("secondary").style.background = "red"
+
+				}else{
+					//If remaining time is less than 10
+					TemporaryTime = 0
+					document.getElementById("NumericalTimer").innerHTML = 0
+					document.getElementById("secondary").style.width = 0+"%"
+					clearInterval(timerowa);
+					var prompt = setTimeout(function() {
+						WindowPrompt(TemporaryTime,nick)
+					clearInterval(prompt)	
+					}, 400);
+				}
+			}, 10);	
+		}
+		/*
+		action: reload needed items
+		*/
+		function reload(){
+			Rescaling = false;
+			document.getElementById("upper").remove();
+			document.getElementById('h1').remove();
+			document.getElementById('leaderboard').remove();
+			document.getElementById("bt1").setAttribute("onclick","game()");
+			document.getElementById("nick").removeAttribute("readonly");
+			turns = 0;
+			CountToWin = 0;
+			ClickedElements = 0;
+			TabOfClicked = [];
+		}
+		/*
+		--- MAIN FUNCTION OF THE GAME ---
+		*/
+		function game() {
+			CleaningPlayground()					//Cleaning parent div for new game
+			GamePreparation()						//making an child div and initial image
+
+			//preparation for the game variables
+			width = document.getElementById("width").value;
+			height = document.getElementById("height").value;
+			elements = width * height;
+			elementsBoard = karty.getElementsByTagName("img");			//Board of img elements on website
+			srcBoard = [];												//Board of src elements
+
+			RescaleImagemap(earlierX, earlierY)						//Rescaling Imagemap to init image size
+			earlierX = width
+			earlierY = height
+
+			if(document.cookie!=""){
+				sec30= document.cookie.split(";")[0].split("=")[1].split(",")
+				sec60= document.cookie.split(";")[1].split("=")[1].split(",")
+				sec90= document.cookie.split(";")[2].split("=")[1].split(",")
+			}
+
+			PlacingItems(elements, width)			//Placing items on the page, input - number of elements, how many elements in the row
+			PreparingBoard(elementsBoard)			//Preparing the board of src, input - board of img elements
+			SetupSources(srcBoard, elementsBoard)	//Set up he sources one by one in array, input - board of sources, board of elements
+			srcBoard = DrawSources(srcBoard)		//drawing sources of elements
+			FlippingElements(elementsBoard)			//Flipping elements to the other side, input - board of elements
+		}
+	</script>
+	<div id="main">
+		<label>
+		Wybierz szerokość:
+			<select id="width">
+					<option value="2">2</option>
+					<option value="4">4</option>
+					<option value="6">6</option>        
+			</select>
+		</label>
+		<label>
+		Wybierz wysokość:
+			<select id="height">
+					<option value="2">2</option>
+					<option value="4">4</option>
+					<option value="6">6</option>        
+			</select>
+		</label>
+		<label>
+			Podaj swój nick:
+			<input type="text" id="nick"/>
+		</label>
+		<button id="bt1" onclick="game()">Rozpocznij grę!</button>
+		<button id="bt2" onclick="ShowAllLeaderboards()">Show Leaderboard!</button>
+		<div id="kontener">
+		</div>
+	</div>
+	<map name="map" id="map">
+		<area alt="b"  shape="poly" id="30sec" coords="341,62,42,39,67,152" />
+		<area alt="b"  shape="poly" id="60sec" coords="345,106,369,234,79,218" />
+		<area alt="b"  shape="poly" id="90sec" coords="94,268,374,296,114,382" />
+	</map>
+</body>
+
+</html>
